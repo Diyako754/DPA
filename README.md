@@ -79,7 +79,7 @@ For each seed, first average accuracy across agents. We report the mean and stan
 
 This repository builds on Global Update Tracking (GUT) by Sai Aparna Aketi, Abolfazl Hashemi, and Kaushik Roy. We thank the authors for sharing their code and Sai Aparna Aketi for permission to publish this modified fork. [GUT repository](https://github.com/aparna-aketi/global_update_tracking)
 
-Please cite our paper and the original GUT paper when using this implementation.
+Please cite our paper and the GUT paper when using this implementation.
 
 ```bibtex
 @inproceedings{ghaderyan2026dpa,
