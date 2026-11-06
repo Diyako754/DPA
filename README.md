@@ -1,75 +1,100 @@
-# Global Update Tracking
-This repository is the official implementation of the paper: [Global Update Tracking: A Decentralized Learning Algorithm for Heterogeneous Data](https://arxiv.org/abs/2305.04792), which appeared in NeurIPS 2023.
+# DPA: Decentralized Primal Averaging
 
-### Abstract
-Decentralized learning enables the training of deep learning models over large distributed datasets generated at different locations, without the need for a central server. However, in practical scenarios, the data distribution across these devices can be significantly different, leading to a degradation in model performance. In this paper, we focus on designing a decentralized learning algorithm that is less susceptible to variations in data distribution across devices. We propose Global Update Tracking (GUT), a novel tracking-based method that aims to mitigate the impact of heterogeneous data in decentralized learning without introducing any communication overhead. We demonstrate the effectiveness of the proposed technique through an exhaustive set of experiments on various Computer Vision datasets (CIFAR-10, CIFAR-100, Fashion MNIST, and ImageNette), model architectures, and network topologies. Our experiments show that the proposed method achieves state-of-the-art performance for decentralized learning on heterogeneous data via a $1-6\%$ improvement in test accuracy compared to other existing techniques. 
+PyTorch implementation of **DPA** and **DPA-1G** for decentralized learning with heterogeneous data.
 
-# Available Models
-* ResNet
-* VGG-11
-* MobileNet-V2
-* LeNet-5
+**DPA: Decentralized Primal Averaging with Quasi-Global Momentum for Highly Heterogeneous Data**  
+Diyako Ghaderyan and Stefan Werner, NeurIPS 2026.  
+[Paper](https://openreview.net/forum?id=8Tew0zEsuF)
 
-# Available Datasets
-* CIFAR-10
-* CIFAR-100
-* Fashion MNIST
-* Imagenette
+DPA combines primal averaging with local quasi-global momentum. Both variants use a constant learning rate after linear warmup.
 
-# Available Graph Topologies
-* Ring Graph
-* Petersen Graph
-* Dyck Graph
-* Torus Graph
-* Fully Connected Graph
+- **DPA** uses two communication rounds per iteration.
+- **DPA-1G** uses one communication round per iteration. In our experiments, four iterations perform gradient updates, and every fifth iteration averages the output models without computing a gradient.
 
-# Requirements
-* found in env.yml file
+## Installation
 
-# Hyper-parameters
-* --world_size  = total number of agents
-* --graph       = graph topology (default ring); options: [ring, dyck, petersen, torus, full]
-* --neighbors   = number of neighbors per agent (default 2)
-* --arch        = model to train
-* --normtype    = type of normalization layer
-* --dataset     = dataset to train; ; options: [cifar10, cifar100, fmnist, imagenette]
-* --batch_size  = batch size for training (batch_size = batch_size per agent x world_size)
-* --epochs      = total number of training epochs
-* --lr          = learning rate
-* --momentum    = momentum coefficient
-* --gamma       = averaging rate for gossip 
-* --skew        = amount of skew in the data distribution (alpha of Dirichlet distribution); 0.01 = completely non-iid and 10 = more towards iid
-* --scaling     = \textit{GUT} scaling factor $\mu$
+The dependencies are listed in [env.yml](env.yml).
 
-# How to run?
-
-test file contains the commands to run the proposed algorithms and baselines on various datasets, models, and graphs
-```
-sh test.sh
+```bash
+git clone https://github.com/Diyako754/DPA.git
+cd DPA
+conda env create -n DPA -f env.yml
+conda activate DPA
 ```
 
-Some sample commands:
+Training requires CUDA-enabled PyTorch. Prepare the dataset in `./data`, or specify its location with `--data-dir`.
 
-ResNet-20 with 16 agents ring topology with GUT optimizer:
+## How to run
+
+This example trains ResNet-20 on CIFAR-10 with 16 agents on a ring, `alpha = 0.1`, and four GPUs. The mini-batch size is 32 per agent. Run it from the repository root.
+
+```bash
+mkdir -p logs
+
+python -u trainer.py \
+  --method DPA \
+  --dataset cifar10 --classes 10 \
+  --arch resnet --depth 20 --normtype evonorm \
+  --world_size 16 --graph ring --neighbors 2 --devices 4 \
+  --batch-size 512 --epochs 200 --skew 0.1 --seed 0 \
+  --lr 5.0 --beta-1 0.90 --beta-2 0.80 --t-gossip-x 0 \
+  --optimal-epoch 200 \
+  --a-epoch-frac 1.0 --b-epoch-frac 0.15 --warmup-epoch-frac 0.25 \
+  --a-schedule exp --a-start 0.005 --a-end 0.0001 --qa 1 \
+  --b-schedule exp --b-start 0.3 --b-end 0.1 --qb 1 \
+  --data-dir ./data --save-dir ./outputs/dpa_seed0 \
+  > logs/dpa_seed0.log 2>&1
 ```
-python trainer.py --lr=0.1  --batch-size=512  --world_size=16 --skew=0.1  --epochs=200 --arch=resnet --graph=ring --neighbors=2 --momentum=0.0 --scaling=0.9 --dataset=cifar10 --classes=10 --devices=4 --seed=12
 
-```
+To run **DPA-1G**, change the method and communication setting to `--method DPA-1G --t-gossip-x 5`. Use a different log filename and output directory for each run.
 
-ResNet-20 with 16 agents ring topology with QG-GUTm optimizer:
-```
-python trainer.py --lr=0.1  --batch-size=512  --world_size=16 --skew=0.1  --epochs=200 --arch=resnet --graph=ring --neighbors=2 --momentum=0.9 --scaling=0.06 --dataset=cifar10 --classes=10 --devices=4 --seed=12
+Commands for the other main non-IID experiments and the DSGD, GT, QG-DSGDm, MT, and QG-GUTm baselines are in [test.sh](test.sh).
 
-```
+Run `SEED=0 bash test.sh` to execute all listed experiments for one seed. Use `SEED=1` and `SEED=2` for the other two seeds.
 
-## References
-If you use the code, please cite the following paper:
+## Experiment settings
 
-```
+We use the following DPA and DPA-1G settings for the main ring experiments.
+
+| Dataset / model | Epochs | Learning rate | `(beta_1, beta_2)` |
+| --- | ---: | ---: | --- |
+| Fashion-MNIST / LeNet-5 | 100 | 0.1 | `(0.95, 0.85)` |
+| CIFAR-10 / VGG-11 | 200 | 5.0 | `(0.95, 0.85)` |
+| CIFAR-10 / ResNet-20 | 200 | 5.0 | `(0.90, 0.80)` |
+| CIFAR-100 / ResNet-20 | 200 | 5.0 | `(0.90, 0.80)` |
+
+Set `--optimal-epoch` equal to `--epochs` for these experiments. The coefficient schedules and warmup settings are given in the commands.
+
+The `--skew` argument sets the Dirichlet concentration parameter. We use `0.1` and `0.01`, with smaller values giving more heterogeneous data. For `alpha = 0.01`, replace the corresponding arguments in the example with `--skew 0.01 --b-epoch-frac 0.30 --warmup-epoch-frac 0.50`.
+
+## Evaluation
+
+DPA and DPA-1G evaluate the averaged output model `x`. **LE** is the test accuracy at the last training epoch. **L5E** is the average over the last five training epochs.
+
+The final summary reports LE, L5E, and post-training accuracy, averaged across agents. For the baselines, the post-training evaluation follows additional model averaging. For DPA and DPA-1G, it repeats evaluation at `x`.
+
+For each seed, first average accuracy across agents. We report the mean and standard deviation across seeds `0`, `1`, and `2`, using `ddof=0` for the standard deviation.
+
+## Acknowledgments and citation
+
+This repository builds on Global Update Tracking (GUT) by Sai Aparna Aketi, Abolfazl Hashemi, and Kaushik Roy. We thank the authors for sharing their code and Sai Aparna Aketi for permission to publish this modified fork. [GUT repository](https://github.com/aparna-aketi/global_update_tracking)
+
+Please cite our paper and the original GUT paper when using this implementation.
+
+```bibtex
+@inproceedings{ghaderyan2026dpa,
+  title     = {{DPA}: Decentralized Primal Averaging with Quasi-Global Momentum for Highly Heterogeneous Data},
+  author    = {Ghaderyan, Diyako and Werner, Stefan},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026},
+  url       = {https://openreview.net/forum?id=8Tew0zEsuF}
+}
+
 @inproceedings{aketi2023gut,
   title     = {Global Update Tracking: A Decentralized Learning Algorithm for Heterogeneous Data},
   author    = {Aketi, Sai Aparna and Hashemi, Abolfazl and Roy, Kaushik},
-  booktitle = {Conference on Neural Information Processing Systems (NeurIPS)},
-  year      = {2023}
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2305.04792}
 }
 ```
