@@ -83,7 +83,7 @@ Please cite our paper and the GUT paper when using this implementation.
 
 ```bibtex
 @inproceedings{ghaderyan2026dpa,
-  title     = {{DPA}: Decentralized Primal Averaging with Quasi-Global Momentum for Highly Heterogeneous Data},
+  title     = {DPA: Decentralized Primal Averaging with Quasi-Global Momentum for Highly Heterogeneous Data},
   author    = {Ghaderyan, Diyako and Werner, Stefan},
   booktitle = {Advances in Neural Information Processing Systems},
   year      = {2026},
