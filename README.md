@@ -87,7 +87,7 @@ Please cite our paper and the GUT paper when using this implementation.
   author    = {Ghaderyan, Diyako and Werner, Stefan},
   booktitle = {Advances in Neural Information Processing Systems},
   year      = {2026},
-  url       = {https://openreview.net/forum?id=8Tew0zEsuF}
+  url       = {https://arxiv.org/abs/2611.16871}
 }
 
 @inproceedings{aketi2023gut,
